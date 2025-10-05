@@ -65,8 +65,8 @@ async function serveIndexHtml() {
 
       if (!inputUrl) return;
 
-      const proxiedUrl = \`\${workerBase}/m3u8-proxy?url=\${encodeURIComponent(inputUrl)}\`;
-      resultDiv.innerHTML = \`<strong>Trying Direct:</strong> <a href="\${inputUrl}" target="_blank">\${inputUrl}</a><br><strong>Fallback Proxy:</strong> <a href="\${proxiedUrl}" target="_blank">\${proxiedUrl}</a>\`;
+      const proxiedUrl = workerBase + "/m3u8-proxy?url=" + encodeURIComponent(inputUrl);
+      resultDiv.innerHTML = "<strong>Trying Direct:</strong> <a href='" + inputUrl + "' target='_blank'>" + inputUrl + "</a><br><strong>Fallback Proxy:</strong> <a href='" + proxiedUrl + "' target='_blank'>" + proxiedUrl + "</a>";
 
       player.pause();
       player.reset();
@@ -82,18 +82,24 @@ async function serveIndexHtml() {
             hls = new Hls();
             hls.loadSource(proxiedUrl);
             hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => player.play());
+            hls.on(Hls.Events.MANIFEST_PARSED, function () {
+              player.play();
+            });
           }
         });
-        hls.on(Hls.Events.MANIFEST_PARSED, () => player.play());
+        hls.on(Hls.Events.MANIFEST_PARSED, function () {
+          player.play();
+        });
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = inputUrl;
-        video.addEventListener("error", () => {
+        video.addEventListener("error", function () {
           console.warn("Direct failed, switching to proxy...");
           video.src = proxiedUrl;
           video.play();
         });
-        video.addEventListener("loadedmetadata", () => video.play());
+        video.addEventListener("loadedmetadata", function () {
+          video.play();
+        });
       }
     }
 
@@ -120,15 +126,16 @@ async function serveIndexHtml() {
 async function handleM3U8Proxy(request) {
   const { searchParams } = new URL(request.url);
   const targetUrl = searchParams.get("url");
+
+  if (!targetUrl) {
+    return new Response("URL is required", { status: 400 });
+  }
+
   const headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
     "Referer": targetUrl,
     "Origin": new URL(targetUrl).origin,
   };
-
-  if (!targetUrl) {
-    return new Response("URL is required", { status: 400 });
-  }
 
   try {
     const response = await fetch(targetUrl, { headers });
@@ -139,13 +146,16 @@ async function handleM3U8Proxy(request) {
     let m3u8 = await response.text();
     m3u8 = m3u8
       .split("\n")
-      .filter(line => !line.startsWith("#EXT-X-MEDIA:TYPE=AUDIO"))
+      .filter(function (line) {
+        return !line.startsWith("#EXT-X-MEDIA:TYPE=AUDIO");
+      })
       .join("\n");
 
     const lines = m3u8.split("\n");
     const newLines = [];
 
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       if (line.startsWith("#")) {
         if (line.startsWith("#EXT-X-KEY:")) {
           const match = line.match(/https?:\/\/[^\s"']+/);
@@ -208,17 +218,8 @@ async function handleTsProxy(request) {
         "Content-Type": "video/mp2t",
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Headers": "*",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
-      },
-    });
-  } catch (return new Response(response.body, {
-      status: response.status,
-      headers: {
-        "Content-Type": "video/mp2t",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "*",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
-      },
+        "Access-Control-Allow-Methods": "GET, OPTIONS"
+      }
     });
   } catch (error) {
     return new Response(error.message, { status: 500 });
