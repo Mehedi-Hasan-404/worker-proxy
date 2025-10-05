@@ -2,11 +2,3 @@ name = "worker-proxy"
 main = "src/worker.js"
 compatibility_date = "2024-09-01"
 workers_dev = true
-
-# Serve static assets from the root directory
-assets = "./public"
-
-# Optional: custom routes if deploying to a specific domain
-# routes = [
-#   { pattern = "worker-proxy.personalerror1.workers.dev", zone_id = "your-zone-id" }
-# ]
