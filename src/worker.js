@@ -163,7 +163,7 @@ async function handleM3U8Proxy(request) {
         const abs = new URL(line, targetUrl).href;
         const isM3U8 = abs.endsWith(".m3u8");
         const endpoint = isM3U8 ? "/m3u8-proxy" : "/ts-proxy";
-        const proxied = \`\${endpoint}?url=\${encodeURIComponent(abs)}\`;
+        const proxied = endpoint + "?url=" + encodeURIComponent(abs);
         newLines.push(proxied);
       }
     }
