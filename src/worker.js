@@ -10,13 +10,92 @@ const options = {
 async function handleRequest(request) {
   const url = new URL(request.url);
 
-  if (url.pathname === "/m3u8-proxy") {
+  if (url.pathname === "/") {
+    return serveIndexHtml();
+  } else if (url.pathname === "/m3u8-proxy") {
     return handleM3U8Proxy(request);
   } else if (url.pathname === "/ts-proxy") {
     return handleTsProxy(request);
   }
 
   return new Response("Not Found", { status: 404 });
+}
+
+async function serveIndexHtml() {
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>M3U8 Proxy Player</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f0f0f0; }
+    .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    input[type="text"] { width: 100%; padding: 10px; font-size: 16px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
+    button { padding: 10px 20px; font-size: 16px; margin-right: 10px; cursor: pointer; border: none; border-radius: 4px; }
+    .play-btn { background-color: #28a745; color: white; }
+    .clear-btn { background-color: #dc3545; color: white; }
+    #result { margin-top: 10px; font-size: 14px; word-break: break-word; }
+    video { width: 100%; max-height: 480px; margin-top: 20px; background: black; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>M3U8 Proxy Player</h2>
+    <input type="text" id="streamUrl" placeholder="Enter M3U8 stream URL..." />
+    <button class="play-btn" onclick="playStream()">Play</button>
+    <button class="clear-btn" onclick="clearStream()">Clear</button>
+    <div id="result"></div>
+    <video id="videoPlayer" controls></video>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script>
+    let hls;
+    const workerBase = location.origin;
+
+    function playStream() {
+      const inputUrl = document.getElementById("streamUrl").value.trim();
+      const resultDiv = document.getElementById("result");
+      const video = document.getElementById("videoPlayer");
+
+      if (!inputUrl) return;
+
+      const proxiedUrl = \`\${workerBase}/m3u8-proxy?url=\${encodeURIComponent(inputUrl)}\`;
+      resultDiv.innerHTML = \`<strong>Proxied URL:</strong> <a href="\${proxiedUrl}" target="_blank">\${proxiedUrl}</a>\`;
+
+      if (hls) hls.destroy();
+
+      if (Hls.isSupported()) {
+        hls = new Hls();
+        hls.loadSource(proxiedUrl);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = proxiedUrl;
+        video.addEventListener("loadedmetadata", () => video.play());
+      }
+    }
+
+    function clearStream() {
+      document.getElementById("streamUrl").value = "";
+      document.getElementById("result").innerHTML = "";
+      const video = document.getElementById("videoPlayer");
+      if (hls) hls.destroy();
+      video.src = "";
+    }
+  </script>
+</body>
+</html>
+  `.trim();
+
+  return new Response(html, {
+    headers: {
+      "Content-Type": "text/html",
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
 }
 
 async function handleM3U8Proxy(request) {
