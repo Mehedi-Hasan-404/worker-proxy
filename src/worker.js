@@ -151,7 +151,7 @@ async function handleM3U8Proxy(request) {
           const match = line.match(/https?:\/\/[^\s"']+/);
           if (match) {
             const keyUrl = match[0];
-            const proxied = \`/ts-proxy?url=\${encodeURIComponent(keyUrl)}\`;
+            const proxied = "/ts-proxy?url=" + encodeURIComponent(keyUrl);
             newLines.push(line.replace(keyUrl, proxied));
           } else {
             newLines.push(line);
