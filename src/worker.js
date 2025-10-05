@@ -1,3 +1,5 @@
+const ALLOWED_ORIGINS = ["*"];
+
 addEventListener("fetch", (event) => {
   event.respondWith(handleRequest(event.request));
 });
